@@ -340,6 +340,9 @@ def analyse_need_locations(app: Sphinx, doctree: nodes.document) -> None:
         if need_node.get("hidden"):
             hidden_needs.append(need_node)
 
+        if need_node_excluded_by_only_directive(env, need_node):
+            hidden_needs.append(need_node)
+
     # now we have gathered all the information we need,
     # we can remove the hidden needs from the doctree
     for need_node in hidden_needs:
@@ -354,6 +357,16 @@ def previous_sibling(node: nodes.Node) -> Optional[nodes.Node]:
     except AttributeError:
         return None
     return node.parent[i - 1] if i > 0 else None  # type: ignore
+
+
+def need_node_excluded_by_only_directive(env: BuildEnvironment, node: nodes.Node) -> bool:
+    """Return True if the node is under an "only" directive that shall be excluded given to the current tags"""
+    if hasattr(node.parent, "tagname") and node.parent.tagname == "only":
+        # note that we only check for a direct parent,
+        # maybe we should look recursively until we reach the root of the document
+        only_tags = node.parent.attributes.get("expr", "")
+        return env.app.builder.tags.eval_condition(only_tags)
+    return False
 
 
 @profile("NEEDS_POST_PROCESS")
